@@ -14,14 +14,17 @@ and also add your prismic API config:
   `
   "prismic": {
     "apiEndpoint": "https://publicrepo.prismic.io/api/v2",
+    "useElasticSearchLayer": true,
     "webhook": {
       "secretKey": "<< your secret >>"
     }
   }
   `
-
 Make sure that you have installed `prismic-javascript` npm module 
 `npm install prismic-javascript --save`
+
+**To switch off Elastic Search layer** and stop to listen to Prismic weebhooks 
+in config file set `useElasticSearchLayer` to false.
 
 # GET /api/ext/cms-prismic/index/
 
