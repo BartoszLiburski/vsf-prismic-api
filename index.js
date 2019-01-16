@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import {apiStatus} from "../../../lib/util";
-import { filterReturnContent } from './customFilters';
+import { filterReturnContent } from './features/customFilters';
 import { exists } from 'fs';
-import constStrings from './constStrings';
-const Prismic = require('prismic-javascript');
-const elasticConnection = require('./elasticConnection');
+import { searchAndFetchFromPrismic } from './features/prismicConnection';
+import constStrings from './features/constStrings';
+const elasticConnection = require('./features/elasticConnection');
 
 module.exports = ({ config }) => {
 
@@ -29,18 +29,21 @@ module.exports = ({ config }) => {
   });
 
   cmsApi.get('/index', (req, res) => {
-    let query
+    let query;
     if (req.query.id){
       query = { "_id": req.query.id };
     }
-    else if (req.query.type){
-      query = { "prismic_type": req.query.type }; //TODO: searching by type should ends with quering Prismic repo
-      if (req.query.tags) {
-        query['prismic_tags'] = req.query.tags;
-      }
-    } else {
+    else if (req.query.type) {
+      query = {"prismic_type": req.query.type};
+    }
+    else if (req.query.tag) {
+      query = {"prismic_tags": req.query.tag};
+    }
+
+    if (!query) {
       throw new Error(constStrings.elasticErrorThrow + 'No search data provided');
     }
+    config.prismic.useElasticSearchLayer = false
     if(config.prismic.useElasticSearchLayer){
       elasticConnection.elasticSearchClient().search({
         index: elasticConnection.elasticSearchIndex(req.query.index_name),
@@ -69,14 +72,14 @@ module.exports = ({ config }) => {
         } else {
           return apiStatus(
             res,
-            filterReturnContent(response.hits.hits[0]._source.content, req.query.filter, req.query.filter_option),
+            filterReturnContent(response.hits.hits, req.query.filter, req.query.filter_option),
             200);
         }
       });
     } else {
       searchAndFetchFromPrismic(query, req).then( prismicRes => {
         if(prismicRes.results.length > 0){
-          return apiStatus(res, filterReturnContent(prismicRes.results[0].data, req.query.filter, req.query.filter_option), 200);
+          return apiStatus(res, filterReturnContent(prismicRes.results, req.query.filter, req.query.filter_option), 200);
         }
         return apiStatus(res, 'No data with given properties in Prismic repo', 500);
       }).catch((err) => {
@@ -84,55 +87,6 @@ module.exports = ({ config }) => {
       })
     }
   });
-
-  const searchAndFetchFromPrismic = async (query, req, noLimit = false) => {
-    let documentType = 'id';
-    let byValue;
-    let orderings;
-    let prismicQuery;
-    if(!query){
-      prismicQuery = '';
-      if (noLimit) {
-        orderings = null;
-      } else {
-        orderings = { pageSize : 3, orderings : '[document.last_publication_date desc]' }; // get only recent content
-      }
-    } else {
-      if(query.hasOwnProperty('_id')){
-        byValue = query._id
-      }
-      if (query.hasOwnProperty('prismic_type')) {
-        documentType = 'type';
-        byValue = query.prismic_type
-        if(query.hasOwnProperty('prismic_tag')){
-          orderings = {orderings: query.prismic_tag }
-        }
-      }
-      prismicQuery = Prismic.Predicates.at('document.' + documentType, byValue);
-    }
-    try {
-      const api = await Prismic.getApi(config.prismic.apiEndpoint, { req: req });
-      return await api.query(prismicQuery, orderings);
-    }
-    catch (err) {
-      throw new Error(constStrings.prismicFetchErrorThrow + err);
-    }
-  };
-
-  // TODO: snap this method to console command or smt
-  // const fetchAllAndSaveFromPrismic = () => {
-  //   searchAndFetchFromPrismic(null, null, true)
-  //     .then( result => {
-  //       let prismicRes = result.results;
-  //       if(prismicRes.length > 0){
-  //         saveToElasticSearch(prismicRes);
-  //         return apiStatus(res, true, 200);
-  //       }
-  //       return apiStatus(res, 'No data in Prismic repo', 500);
-  //     }).catch((err) => {
-  //     throw new Error(constStrings.prismicFetchErrorThrow + err);
-  //   })
-  // }
 
   return cmsApi;
 }
