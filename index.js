@@ -79,7 +79,7 @@ module.exports = ({ config }) => {
     } else {
       searchAndFetchFromPrismic(query, req).then( prismicRes => {
         if(prismicRes.results.length > 0){
-          return apiStatus(res, filterReturnContent(prismicRes.results, req.query.filter, req.query.filter_option), 200);
+          return apiStatus(res, prismicRes, 200);
         }
         return apiStatus(res, 'No data with given properties in Prismic repo', 500);
       }).catch((err) => {
