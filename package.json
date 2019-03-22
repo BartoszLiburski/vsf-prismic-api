@@ -1,6 +1,6 @@
 {
   "name": "vsf-api-prismic",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Prismic implementation for vue storefront-api",
   "license": "MIT",
   "main": "index.js",
@@ -8,6 +8,9 @@
     "type" : "git",
     "url" : "https://github.com/BartoszLiburski/vsf-prismic-api"
   },
-  "keywords": ["vue", "vue-storefront", "headless", "prismic", "api"]
+  "keywords": ["vue", "vue-storefront", "headless", "prismic", "api", "node", "elasticsearch"],
+  "dependencies": {
+    "prismic-javascript": "^2.0.0"
+  }
 }
 
